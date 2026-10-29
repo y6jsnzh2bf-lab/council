@@ -108,6 +108,10 @@ def main():
     print("Analyzed:", len(results))
     print("Failed:", len(failed))
     print("Saved: analysis.json")
+    print("\n=== FAILED PAIRS DETAILS ===")
+
+    for item in failed[:20]:
+        print(item["symbol"], "->", item["error"])
 
 
 if __name__ == "__main__":
