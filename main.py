@@ -1,49 +1,64 @@
 
 import json
+import time
 from datetime import datetime, timezone
 
-from engine.bitkub import get_symbols, get_all_tickers
+from engine.bitkub import get_symbols, get_candlesticks
 
 
 def main():
     symbols = get_symbols()
-    tickers = get_all_tickers()
 
-    # Ticker API ส่งกลับมาเป็นรายการข้อมูล
-    if not isinstance(tickers, list):
-        raise TypeError(
-            f"Unexpected ticker format: {type(tickers).__name__}"
-        )
-
-    active_symbols = set(symbols)
-    market = [
-        item for item in tickers
-        if item.get("symbol") in active_symbols
-    ]
-
-    print("=== AI TRADING COUNCIL ===")
+    print("=== BITKUB CANDLE SCAN ===")
     print("Scan time:", datetime.now(timezone.utc).isoformat())
-    print("Active pairs:", len(active_symbols))
-    print("Pairs with ticker data:", len(market))
+    print("Active pairs:", len(symbols))
 
-    print("\n=== TOP 10 BY 24H CHANGE ===")
-    ranked = sorted(
-        market,
-        key=lambda x: float(x.get("percent_change", 0)),
-        reverse=True
-    )
+    market_candles = {}
+    failed = []
 
-    for item in ranked[:10]:
-        print(
-            item["symbol"],
-            "Price:", item.get("last"),
-            "24h:", item.get("percent_change"), "%"
-        )
+    for index, symbol in enumerate(symbols, start=1):
+        try:
+            candles = get_candlesticks(
+                symbol=symbol,
+                timeframe="15",
+                hours=24
+            )
 
-    with open("market.json", "w", encoding="utf-8") as file:
-        json.dump(market, file, ensure_ascii=False, indent=2)
+            market_candles[symbol] = candles
 
-    print("\nSaved market.json")
+            print(
+                f"[{index}/{len(symbols)}] "
+                f"{symbol}: {len(candles)} candles"
+            )
+
+        except Exception as error:
+            failed.append({
+                "symbol": symbol,
+                "error": str(error)
+            })
+
+            print(f"[{index}/{len(symbols)}] {symbol}: FAILED")
+
+        # เว้นระยะระหว่าง API requests
+        time.sleep(0.2)
+
+    output = {
+        "scan_time": datetime.now(timezone.utc).isoformat(),
+        "timeframe": "15m",
+        "pairs_requested": len(symbols),
+        "pairs_successful": len(market_candles),
+        "pairs_failed": len(failed),
+        "market_candles": market_candles,
+        "failed_pairs": failed
+    }
+
+    with open("market_candles.json", "w", encoding="utf-8") as file:
+        json.dump(output, file, ensure_ascii=False)
+
+    print("\n=== SCAN SUMMARY ===")
+    print("Successful:", len(market_candles))
+    print("Failed:", len(failed))
+    print("Saved: market_candles.json")
 
 
 if __name__ == "__main__":
