@@ -22,7 +22,7 @@ def main():
             candles = get_candlesticks(
                 symbol=symbol,
                 timeframe="15",
-                hours=24
+                hours=36
             )
 
             analysis = analyze_candles(candles)
