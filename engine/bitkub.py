@@ -9,7 +9,7 @@ def get_symbols():
     """ดึงรายชื่อคู่ตลาดจาก Bitkub"""
     url = f"{BASE_URL}/api/v3/market/symbols"
 
-    response = requests.get(url, timeout=15)
+    response = requests.get(url, timeout=60)
     response.raise_for_status()
 
     data = response.json()
