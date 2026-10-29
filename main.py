@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timezone
 
 from engine.bitkub import get_symbols, get_candlesticks
-
+from engine.indicators import analyze_candles
 
 def main():
     symbols = get_symbols()
