@@ -6,14 +6,15 @@ from datetime import datetime, timezone
 from engine.bitkub import get_symbols, get_candlesticks
 from engine.indicators import analyze_candles
 
+
 def main():
     symbols = get_symbols()
 
-    print("=== BITKUB CANDLE SCAN ===")
+    print("=== AI TRADING COUNCIL ===")
     print("Scan time:", datetime.now(timezone.utc).isoformat())
     print("Active pairs:", len(symbols))
 
-    market_candles = {}
+    results = []
     failed = []
 
     for index, symbol in enumerate(symbols, start=1):
@@ -24,42 +25,71 @@ def main():
                 hours=24
             )
 
-            market_candles[symbol] = candles
+            analysis = analyze_candles(candles)
 
-            print(
-                f"[{index}/{len(symbols)}] "
-                f"{symbol}: {len(candles)} candles"
-            )
+            if analysis is not None:
+                analysis["symbol"] = symbol
+                results.append(analysis)
+
+            print(f"[{index}/{len(symbols)}] {symbol}: OK")
 
         except Exception as error:
             failed.append({
                 "symbol": symbol,
                 "error": str(error)
             })
-
             print(f"[{index}/{len(symbols)}] {symbol}: FAILED")
 
-        # เว้นระยะระหว่าง API requests
         time.sleep(0.2)
+
+    # จัดอันดับด้วย RSI และแนวโน้ม
+    for item in results:
+        score = 0
+
+        if item["trend"] == "BULLISH":
+            score += 2
+
+        if 50 <= item["rsi14"] <= 70:
+            score += 1
+
+        if item["macd"] > 0:
+            score += 1
+
+        item["score"] = score
+
+    ranked = sorted(
+        results,
+        key=lambda x: x["score"],
+        reverse=True
+    )
 
     output = {
         "scan_time": datetime.now(timezone.utc).isoformat(),
-        "timeframe": "15m",
-        "pairs_requested": len(symbols),
-        "pairs_successful": len(market_candles),
+        "pairs_scanned": len(symbols),
+        "pairs_analyzed": len(results),
         "pairs_failed": len(failed),
-        "market_candles": market_candles,
+        "ranked_market": ranked,
         "failed_pairs": failed
     }
 
-    with open("market_candles.json", "w", encoding="utf-8") as file:
-        json.dump(output, file, ensure_ascii=False)
+    with open("analysis.json", "w", encoding="utf-8") as file:
+        json.dump(output, file, ensure_ascii=False, indent=2)
 
-    print("\n=== SCAN SUMMARY ===")
-    print("Successful:", len(market_candles))
+    print("\n=== TOP 10 TECHNICAL SCORES ===")
+
+    for item in ranked[:10]:
+        print(
+            item["symbol"],
+            "Score:", item["score"],
+            "Trend:", item["trend"],
+            "RSI:", round(item["rsi14"], 2)
+        )
+
+    print("\nAnalyzed:", len(results))
     print("Failed:", len(failed))
-    print("Saved: market_candles.json")
+    print("Saved: analysis.json")
 
 
 if __name__ == "__main__":
+    main()
     main()
