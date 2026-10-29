@@ -19,7 +19,11 @@ def analyze_symbol(symbol):
     analysis = analyze_candles(candles)
 
     if analysis is None:
-        return None
+        return {
+            "symbol": symbol,
+            "error": "Insufficient candle data",
+            "candle_count": len(candles)
+        }
 
     analysis["symbol"] = symbol
     analysis["candle_count"] = len(candles)
