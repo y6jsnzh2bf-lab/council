@@ -62,6 +62,14 @@ def main():
                     })
                     continue
 
+                if "error" in analysis:
+                    failed.append(analysis)
+                    print(
+                        f"[{index}/{len(symbols)}] {symbol}: "
+                        f"{analysis['candle_count']} candles"
+                    )
+                    continue
+
                 results.append(analysis)
 
                 print(
