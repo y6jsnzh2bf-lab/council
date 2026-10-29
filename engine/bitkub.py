@@ -94,3 +94,24 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+def get_candlesticks(symbol="THB_BTC", timeframe="15"):
+    """ดึงข้อมูลแท่งเทียนย้อนหลังจาก Bitkub"""
+    url = f"{BASE_URL}/api/v3/market/candlesticks"
+
+    params = {
+        "symbol": symbol,
+        "resolution": timeframe,
+        "from": int(datetime.now(timezone.utc).timestamp()) - 86400,
+        "to": int(datetime.now(timezone.utc).timestamp())
+    }
+
+    response = requests.get(url, params=params, timeout=30)
+    response.raise_for_status()
+
+    data = response.json()
+
+    if isinstance(data, dict) and data.get("error", 0) != 0:
+        raise RuntimeError(f"Candlestick API error: {data}")
+
+    return data
