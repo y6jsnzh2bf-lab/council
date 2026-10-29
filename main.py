@@ -1,10 +1,30 @@
 
 import json
-import time
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from engine.bitkub import get_symbols, get_candlesticks
 from engine.indicators import analyze_candles
+
+MAX_WORKERS = 5
+
+
+def analyze_symbol(symbol):
+    candles = get_candlesticks(
+        symbol=symbol,
+        timeframe="15",
+        hours=36
+    )
+
+    analysis = analyze_candles(candles)
+
+    if analysis is None:
+        return None
+
+    analysis["symbol"] = symbol
+    analysis["candle_count"] = len(candles)
+
+    return analysis
 
 
 def main():
@@ -13,53 +33,50 @@ def main():
     print("=== AI TRADING COUNCIL ===")
     print("Scan time:", datetime.now(timezone.utc).isoformat())
     print("Active pairs:", len(symbols))
+    print("Workers:", MAX_WORKERS)
 
     results = []
     failed = []
 
-    for index, symbol in enumerate(symbols, start=1):
-        try:
-            candles = get_candlesticks(
-                symbol=symbol,
-                timeframe="15",
-                hours=36
-            )
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
 
-            analysis = analyze_candles(candles)
+        futures = {
+            executor.submit(analyze_symbol, symbol): symbol
+            for symbol in symbols
+        }
 
-            if analysis is not None:
-                analysis["symbol"] = symbol
+        for index, future in enumerate(as_completed(futures), start=1):
+            symbol = futures[future]
+
+            try:
+                analysis = future.result()
+
+                if analysis is None:
+                    failed.append({
+                        "symbol": symbol,
+                        "error": "Insufficient candle data"
+                    })
+                    continue
+
                 results.append(analysis)
 
-            print(f"[{index}/{len(symbols)}] {symbol}: OK")
+                print(
+                    f"[{index}/{len(symbols)}] {symbol}: "
+                    f"Score {analysis['score']['total']}/"
+                    f"{analysis['score']['max']}"
+                )
 
-        except Exception as error:
-            failed.append({
-                "symbol": symbol,
-                "error": str(error)
-            })
-            print(f"[{index}/{len(symbols)}] {symbol}: FAILED")
+            except Exception as error:
+                failed.append({
+                    "symbol": symbol,
+                    "error": str(error)
+                })
 
-        time.sleep(0.2)
-
-    # จัดอันดับด้วย RSI และแนวโน้ม
-    for item in results:
-        score = 0
-
-        if item["trend"] == "BULLISH":
-            score += 2
-
-        if 50 <= item["rsi14"] <= 70:
-            score += 1
-
-        if item["macd"] > 0:
-            score += 1
-
-        item["score"] = score
+                print(f"[{index}/{len(symbols)}] {symbol}: FAILED")
 
     ranked = sorted(
         results,
-        key=lambda x: x["score"],
+        key=lambda x: x["score"]["total"],
         reverse=True
     )
 
@@ -78,18 +95,20 @@ def main():
     print("\n=== TOP 10 TECHNICAL SCORES ===")
 
     for item in ranked[:10]:
+        indicators = item["indicators"]
+
         print(
             item["symbol"],
-            "Score:", item["score"],
+            "Score:", item["score"]["total"],
             "Trend:", item["trend"],
-            "RSI:", round(item["rsi14"], 2)
+            "RSI:", round(indicators["rsi14"], 2)
         )
 
-    print("\nAnalyzed:", len(results))
+    print("\n=== SCAN SUMMARY ===")
+    print("Analyzed:", len(results))
     print("Failed:", len(failed))
     print("Saved: analysis.json")
 
 
 if __name__ == "__main__":
-    main()
     main()
