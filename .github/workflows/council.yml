@@ -3,6 +3,8 @@ name: AI Trading Council
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
 
 jobs:
   market-scan:
