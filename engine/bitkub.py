@@ -6,7 +6,7 @@ BASE_URL = "https://api.bitkub.com"
 
 
 def get_symbols():
-    """ดึงรายชื่อคู่ตลาดจาก Bitkub"""
+    """Fetch active Bitkub market pairs."""
     url = f"{BASE_URL}/api/v3/market/symbols"
 
     response = requests.get(url, timeout=15)
@@ -14,7 +14,7 @@ def get_symbols():
 
     data = response.json()
 
-    if data.get("error") = 0:
+    if data.get("error") != 0:
         raise RuntimeError(f"Symbols API error: {data}")
 
     return [
@@ -25,7 +25,7 @@ def get_symbols():
 
 
 def get_all_tickers():
-    """ดึง Ticker ของตลาดทั้งหมด"""
+    """Fetch all market tickers."""
     url = f"{BASE_URL}/api/v3/market/ticker"
 
     response = requests.get(url, timeout=30)
@@ -33,12 +33,10 @@ def get_all_tickers():
 
     data = response.json()
 
-    # ตรวจสอบรูปแบบข้อมูล
     if isinstance(data, dict):
         if data.get("error", 0) != 0:
             raise RuntimeError(f"Ticker API error: {data}")
 
-        # บาง API อาจห่อข้อมูลไว้ใน result
         data = data.get("result", data)
 
     if isinstance(data, dict):
@@ -50,6 +48,60 @@ def get_all_tickers():
         )
 
     return data
+
+
+def get_candlesticks(symbol, timeframe="15", hours=36):
+    """Fetch historical candlesticks."""
+
+    url = f"{BASE_URL}/tradingview/history"
+
+    now = int(datetime.now(timezone.utc).timestamp())
+
+    params = {
+        "symbol": symbol,
+        "resolution": timeframe,
+        "from": now - hours * 3600,
+        "to": now
+    }
+
+    response = requests.get(
+        url,
+        params=params,
+        timeout=30
+    )
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    if data.get("s") != "ok":
+        raise RuntimeError(
+            f"{symbol}: Candlestick API error: {data}"
+        )
+
+    keys = ["t", "o", "h", "l", "c", "v"]
+
+    if not all(key in data for key in keys):
+        raise RuntimeError(
+            f"{symbol}: incomplete candle data"
+        )
+
+    if len({len(data[key]) for key in keys}) != 1:
+        raise RuntimeError(
+            f"{symbol}: candle length mismatch"
+        )
+
+    return [
+        {
+            "time": data["t"][i],
+            "open": data["o"][i],
+            "high": data["h"][i],
+            "low": data["l"][i],
+            "close": data["c"][i],
+            "volume": data["v"][i]
+        }
+        for i in range(len(data["t"]))
+    ]
 
 
 def main():
@@ -94,47 +146,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-def get_candlesticks(symbol, timeframe="15", hours=24):
-    """ดึงแท่งเทียนย้อนหลังของคู่เหรียญหนึ่งคู่"""
-
-    url = f"{BASE_URL}/tradingview/history"
-    now = int(datetime.now(timezone.utc).timestamp())
-
-    params = {
-        "symbol": symbol,
-        "resolution": timeframe,
-        "from": now - hours * 3600,
-        "to": now
-    }
-
-    response = requests.get(url, params=params, timeout=30)
-    response.raise_for_status()
-    data = response.json()
-
-    if data.get("s") != "ok":
-        raise RuntimeError(f"{symbol}: {data}")
-
-    keys = ["t", "o", "h", "l", "c", "v"]
-
-    if not all(key in data for key in keys):
-        raise RuntimeError(f"{symbol}: incomplete candle data")
-
-    if len({len(data[key]) for key in keys}) != 1:
-        raise RuntimeError(f"{symbol}: candle length mismatch")
-
-    return [
-        {
-            "time": data["t"][i],
-            "open": data["o"][i],
-            "high": data["h"][i],
-            "low": data["l"][i],
-            "close": data["c"][i],
-            "volume": data["v"][i]
-        }
-        for i in range(len(data["t"]))
-    ]
-    if data.get("s") != "ok":
-        raise RuntimeError(f"Candlestick API error: {data}")
-
-    return data
