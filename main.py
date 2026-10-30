@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from engine.bitkub import get_symbols, get_candlesticks
 from engine.indicators import analyze_candles
+from engine.decision import make_decision
 
 MAX_WORKERS = 5
 
