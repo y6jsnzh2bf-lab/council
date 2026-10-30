@@ -14,7 +14,7 @@ def get_symbols():
 
     data = response.json()
 
-    if data.get("error") != 0:
+    if data.get("error") = 0:
         raise RuntimeError(f"Symbols API error: {data}")
 
     return [
