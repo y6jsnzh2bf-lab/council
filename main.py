@@ -135,6 +135,7 @@ def main():
         results,
         key=lambda x: x["score"]["total"],
         reverse=True
+    send_discord_top10(ranked)
     )
 
     output = {
