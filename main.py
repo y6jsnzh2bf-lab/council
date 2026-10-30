@@ -1,4 +1,45 @@
 
+def send_discord_top10(ranked):
+    webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+
+    if not webhook_url:
+        print("Discord webhook not configured")
+        return
+
+    message = [
+        "📊 **AI TRADING COUNCIL — TOP 10**",
+        f"🕒 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        "━━━━━━━━━━━━━━━━━━"
+    ]
+
+    for index, item in enumerate(ranked[:10], start=1):
+        decision = item["decision"]
+
+        message.append(
+            f"**{index}. {item['symbol']}**\n"
+            f"Decision: **{decision['decision']}** | "
+            f"Confidence: {decision['confidence']}\n"
+            f"Score: {item['score']['total']}/10 | "
+            f"Trend: {item['trend']}\n"
+        )
+
+    message.append(
+        "━━━━━━━━━━━━━━━━━━\n"
+        "ℹ️ Technical analysis only. Not an instruction to trade."
+    )
+
+    content = "\n".join(message)
+
+    response = requests.post(
+        webhook_url,
+        json={"content": content},
+        timeout=15
+    )
+
+    response.raise_for_status()
+
+    print("Discord Top 10 sent successfully")
+
 import json
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
