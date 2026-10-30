@@ -111,3 +111,5 @@ def make_decision(analysis):
         "bearish_signals": bearish,
         "reasons": reasons,
         "risks": risks
+        
+    }
