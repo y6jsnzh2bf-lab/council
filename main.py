@@ -29,6 +29,9 @@ def analyze_symbol(symbol):
     analysis["symbol"] = symbol
     analysis["candle_count"] = len(candles)
 
+    decision = make_decision(analysis)
+    analysis["decision"] = decision
+
     return analysis
 
 
@@ -112,6 +115,8 @@ def main():
 
         print(
             item["symbol"],
+            "Decision:", item["decision"]["decision"],
+            "Confidence:", item["decision"]["confidence"],
             "Score:", item["score"]["total"],
             "Trend:", item["trend"],
             "RSI:", round(indicators["rsi14"], 2)
